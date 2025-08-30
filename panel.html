@@ -1,28 +1,124 @@
+<!-- panel.html -->
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    :root { color-scheme: light dark; }
-    body { font: 14px/1.6 system-ui, sans-serif; margin: 12px; }
-    #chat { display: grid; gap: 8px; margin-bottom: 8px; max-height: 70vh; overflow: auto; }
-    .msg { padding: 8px 10px; border-radius: 12px; white-space: pre-wrap; }
-    .user { background: rgba(0,0,0,.08); justify-self: end; }
-    .assistant { background: rgba(0,128,255,.10); justify-self: start; }
-    #composer { display: grid; gap: 6px; }
-    textarea { width: 100%; height: 110px; }
-    button[disabled] { opacity: .6; cursor: progress; }
-    label { user-select: none; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg:#0f1115; --surface:#14171c; --bubbleA:#171b22; --bubbleU:#1e2330;
+    --text:#e8eaed; --muted:#9aa1ab; --border:#252a34; --accent:#2f81f7;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#fff; --surface:#f7f8fa; --bubbleA:#f2f4f7; --bubbleU:#eff2f6;
+           --text:#111318; --muted:#586070; --border:#e1e4ea; --accent:#2f6cf7; }
+  }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font:14px/1.48 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+
+  /* Chat area */
+  #chat{
+    flex:1 1 auto; overflow-y:auto; overflow-x:hidden;
+    padding:6px 12px 8px;
+    display:grid; gap:4px;
+  }
+  .msg{
+    max-width:min(92%, 74ch);
+    padding:8px 10px;
+    border-radius:10px; border:1px solid var(--border);
+    white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere;
+    box-shadow:0 1px 0 rgba(0,0,0,.03);
+  }
+  .assistant{ background:var(--bubbleA); justify-self:start; }
+  .user     { background:var(--bubbleU); justify-self:end; }
+
+  /* Markdown (compact) */
+  .assistant :is(p,ul,ol,pre,table,blockquote){ margin:.16em 0; }
+  .assistant h1{ font-size:1.02rem; margin:.24em 0 .14em; }
+  .assistant h2{ font-size:.98rem;  margin:.22em 0 .12em; }
+  .assistant h3{ font-size:.96rem;  margin:.20em 0 .10em; }
+  .assistant h4{ font-size:.95rem;  margin:.18em 0 .08em; }
+  .assistant h1,.assistant h2,.assistant h3,.assistant h4{ font-weight:700; }
+
+  /* Lists tighter */
+  .assistant ul,.assistant ol{
+    padding-left:1.0em; margin-block:.08em; line-height:1.34; list-style-position:outside;
+  }
+  .assistant ul ul,.assistant ol ol{ margin-block:.06em; }
+  .assistant li{ margin:.04em 0; }
+  .assistant li>p{ margin:0; }
+
+  /* Code */
+  .assistant code{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12.2px; background:rgba(0,0,0,.08);
+    padding:1px 4px; border-radius:6px;
+  }
+  .assistant pre{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12.2px; line-height:1.38;
+    background:rgba(0,0,0,.08);
+    padding:8px 10px; border-radius:8px; border:1px solid var(--border);
+    white-space:pre-wrap; word-break:break-word; overflow-x:auto;
+    margin:.14em 0;
+  }
+
+  /* Tables */
+  .assistant table{ width:100%; border-collapse:collapse; table-layout:fixed; }
+  .assistant th,.assistant td{
+    border:1px solid var(--border); padding:.28em .44em;
+    word-break:break-word; overflow-wrap:anywhere;
+  }
+  .assistant blockquote{ margin:.18em 0; padding-left:.5em; border-left:3px solid var(--border); opacity:.9; }
+  .assistant :is(img,video,svg,canvas){ max-width:100%; height:auto; }
+
+  /* Composer */
+  #composer{
+    flex:0 0 auto; position:sticky; bottom:0;
+    background:var(--surface); border-top:1px solid var(--border);
+    padding:10px; display:grid; gap:8px;
+  }
+  #composer label{ color:var(--muted); font-size:.92em; }
+  textarea{
+    width:100%; min-height:170px; max-height:48vh; resize:vertical;
+    padding:12px; border-radius:10px; border:1px solid var(--border);
+    background:var(--bg); color:var(--text); outline:none;
+  }
+  textarea:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px color-mix(in oklab, var(--accent) 28%, transparent);
+  }
+  #send{
+    appearance:none; border:1px solid var(--border); border-radius:10px;
+    background:var(--bubbleU); color:var(--text);
+    padding:10px 14px; font-weight:600; cursor:pointer;
+  }
+  #send:hover{ filter:brightness(1.06); }
+  #send:disabled{ opacity:.6; cursor:progress; }
+  #status{ margin-left:8px; color:var(--muted); }
+
+  #chat::-webkit-scrollbar{ width:8px; }
+  #chat::-webkit-scrollbar-thumb{ background:var(--border); border-radius:999px; }
+</style>
 </head>
 <body>
   <div id="chat"></div>
+
   <div id="composer">
     <label><input id="attach" type="checkbox" checked> ページ内容を添付する</label>
     <textarea id="input" placeholder="ここに質問（⌘/Ctrl+Enterで送信）"></textarea>
     <div><button id="send">送信</button> <span id="status"></span></div>
   </div>
+
+  <!-- ローカル同梱ライブラリ（lib/ に配置） -->
+  <script src="lib/marked.min.js"></script>
+  <script src="lib/purify.min.js"></script>
   <script src="panel.js" defer></script>
 </body>
 </html>

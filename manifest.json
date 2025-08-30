@@ -1,9 +1,13 @@
 {
     "manifest_version": 3,
     "name": "Local 20B Sidebar",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "permissions": ["sidePanel", "storage", "contextMenus", "scripting", "activeTab"],
-    "host_permissions": ["http://localhost:11434/*"],
+    "host_permissions": [
+      "http://*/*",
+      "https://*/*",
+      "http://localhost:11434/*"
+    ],
     "background": { "service_worker": "background.js", "type": "module" },
     "side_panel": { "default_path": "panel.html" },
     "action": { "default_title": "Open Sidebar" },
